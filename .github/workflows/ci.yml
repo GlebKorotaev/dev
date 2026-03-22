@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: GlebKorotaev/dev2
+  IMAGE_NAME: docker.io/gleb332/dev2
 
 jobs:
   build:
@@ -82,10 +82,57 @@ jobs:
           name: matrix-deb
           path: dist/*.deb
 
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: matrix-deb
+          path: dist
+
+      - name: Build Docker image from .deb
+        run: |
+          set -euo pipefail
+          ls -la dist
+          docker build -t latin-square:ci .
+
+      - name: Test Docker image - Valid Latin Square
+        run: |
+          echo "3
+          1 2 3
+          2 3 1
+          3 1 2" | docker run --rm -i latin-square:ci | grep -q "является латинским квадратом"
+          echo "✓ Docker test passed"
+
+      - name: Publish image to Docker Hub (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VERSION_TAG: ${{ github.ref_name }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DOCKERHUB_USERNAME}" ] || [ -z "${DOCKERHUB_TOKEN}" ]; then
+            echo "DOCKERHUB_USERNAME/DOCKERHUB_TOKEN are not set. Skipping Docker Hub push."
+            exit 0
+          fi
+          echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+          docker tag latin-square:ci "${IMAGE_NAME}:${VERSION_TAG}"
+          docker tag latin-square:ci "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${VERSION_TAG}"
+          docker push "${IMAGE_NAME}:latest"
+          echo "✅ Successfully published to Docker Hub: ${IMAGE_NAME}:${VERSION_TAG}"
+
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: package
+    needs: deploy
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -96,7 +143,28 @@ jobs:
           name: matrix-deb
           path: dist
 
+      - name: Debug - List files
+        run: |
+          echo "Files in dist:"
+          ls -la dist/
+          
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.deb
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Релиз ${{ github.ref_name }}
+            
+            ### Что нового:
+            - Проверка матрицы на латинский квадрат
+            - Docker образ доступен на Docker Hub: `docker pull GlebKorotaev/dev2:${{ github.ref_name }}`
+            
+            ### Установка:
+            ```bash
+            # Скачать и установить deb пакет
+            sudo dpkg -i latin-square_${{ github.ref_name }}_amd64.deb
+            
+            # Или использовать Docker
+            docker pull GlebKorotaev/dev2:${{ github.ref_name }}
+            echo "3\n1 2 3\n2 3 1\n3 1 2" | docker run --rm -i GlebKorotaev/dev2:${{ github.ref_name }}

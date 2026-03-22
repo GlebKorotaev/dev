@@ -27,7 +27,7 @@ Version: ${PKG_VERSION}
 Section: utils
 Priority: optional
 Architecture: ${PKG_ARCH}
-Depends: glibc
+Depends: libc6
 Maintainer: Gleb <Kor@example.com>
 Description: Latin square checker
  Checks if a matrix is a Latin square (n×n matrix with numbers 1..n
