@@ -212,7 +212,7 @@ jobs:
         run: |
           echo "Files in dist:"
           ls -la dist/
-          
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
