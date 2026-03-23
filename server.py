@@ -14,19 +14,18 @@ class LatinSquareHandler(BaseHTTPRequestHandler):
                     ['/usr/bin/matrix'],
                     input=post_data,
                     capture_output=True,
-                    text=True,
                     timeout=30
                 )
                 
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain; charset=utf-8')
                 self.end_headers()
-                # result.stdout уже строка, отправляем как bytes
-                self.wfile.write(result.stdout.encode('utf-8'))
+                # Используем stdout напрямую (bytes)
+                self.wfile.write(result.stdout)
             except Exception as e:
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(str(e).encode('utf-8'))
+                self.wfile.write(str(e).encode())
         else:
             self.send_response(404)
             self.end_headers()
