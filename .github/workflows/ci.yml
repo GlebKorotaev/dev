@@ -117,15 +117,12 @@ jobs:
           if [ "$HEALTH_RESPONSE" = "OK" ]; then
             echo "Health check passed"
           else
-            echo "Health check failed. Response: $HEALTH_RESPONSE"
+            echo "Health check failed"
             docker logs latin-square-test
             exit 1
           fi
           echo "Testing valid Latin square..."
-          VALID_RESPONSE=$(echo "3
-1 2 3
-2 3 1
-3 1 2" | curl -s -X POST -d @- http://localhost:8080/check)
+          VALID_RESPONSE=$(printf "3\n1 2 3\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check)
           if echo "$VALID_RESPONSE" | grep -q "является латинским квадратом"; then
             echo "Valid Latin square test passed"
           else
@@ -135,10 +132,7 @@ jobs:
             exit 1
           fi
           echo "Testing invalid Latin square..."
-          INVALID_RESPONSE=$(echo "3
-1 2 2
-2 3 1
-3 1 2" | curl -s -X POST -d @- http://localhost:8080/check)
+          INVALID_RESPONSE=$(printf "3\n1 2 2\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check)
           if echo "$INVALID_RESPONSE" | grep -q "НЕ является латинским квадратом"; then
             echo "Invalid Latin square test passed"
           else
@@ -153,7 +147,6 @@ jobs:
             echo "Metrics endpoint test passed"
           else
             echo "Metrics endpoint test failed"
-            echo "Response: $METRICS_RESPONSE"
             exit 1
           fi
           docker stop latin-square-test
