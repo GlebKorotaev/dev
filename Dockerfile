@@ -8,7 +8,6 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         python3 \
-        python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем deb пакет и устанавливаем
@@ -17,8 +16,12 @@ COPY dist/*.deb /tmp/
 RUN set -eux; \
     deb_file="$(ls /tmp/*.deb | head -n 1)"; \
     test -n "${deb_file}"; \
+    echo "Installing deb package: ${deb_file}"; \
     dpkg -i "${deb_file}" || apt-get install -y -f; \
     rm -rf /var/lib/apt/lists/* /tmp/*.deb
+
+# Проверяем, что бинарник установился
+RUN ls -la /usr/bin/ | grep -E "(matrix|latin-square)" || echo "Binary not found"
 
 # Копируем HTTP сервер
 COPY server.py /usr/bin/server.py
