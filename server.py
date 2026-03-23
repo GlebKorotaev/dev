@@ -21,11 +21,12 @@ class LatinSquareHandler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(result.stdout.encode())
+                # result.stdout уже строка, отправляем как bytes
+                self.wfile.write(result.stdout.encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(str(e).encode())
+                self.wfile.write(str(e).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()
