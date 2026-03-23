@@ -112,58 +112,57 @@ jobs:
           ls -la out/
           if [ -f "out/matrix" ]; then
             echo "✓ matrix found"
-            file out/matrix
           else
             echo "❌ matrix not found"
             exit 1
           fi
-          echo "=== Building Docker image ==="
           docker build -t latin-square:ci .
-          echo "=== Verifying image ==="
-          docker run --rm latin-square:ci ls -la /usr/bin/matrix
 
       - name: Test Docker image - HTTP Server
         run: |
+          # Запускаем HTTP сервер
           docker run -d --name latin-square-test -p 8080:8080 latin-square:ci python3 /usr/bin/server.py
           sleep 5
-          if ! docker ps | grep -q latin-square-test; then
-            echo "Container failed to start"
-            docker logs latin-square-test
-            exit 1
-          fi
-          echo "Container started successfully"
-          echo "Testing health endpoint..."
-          HEALTH_RESPONSE=$(curl -s http://localhost:8080/health)
-          if [ "$HEALTH_RESPONSE" = "OK" ]; then
-            echo "Health check passed"
+          
+          # Проверяем health endpoint
+          if curl -s http://localhost:8080/health | grep -q "OK"; then
+            echo "✓ Health check passed"
           else
-            echo "Health check failed"
+            echo "❌ Health check failed"
             docker logs latin-square-test
+            docker stop latin-square-test
+            docker rm latin-square-test
             exit 1
           fi
+          
+          # Тестируем валидный латинский квадрат
           echo "Testing valid Latin square..."
-          VALID_RESPONSE=$(printf "3\n1 2 3\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check)
-          if echo "$VALID_RESPONSE" | grep -q "является латинским квадратом"; then
-            echo "Valid Latin square test passed"
+          if printf "3\n1 2 3\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check | grep -q "является латинским квадратом"; then
+            echo "✓ Valid Latin square test passed"
           else
-            echo "Valid Latin square test failed"
-            echo "Response: $VALID_RESPONSE"
+            echo "❌ Valid Latin square test failed"
             docker logs latin-square-test
+            docker stop latin-square-test
+            docker rm latin-square-test
             exit 1
           fi
+          
+          # Тестируем невалидный латинский квадрат
           echo "Testing invalid Latin square..."
-          INVALID_RESPONSE=$(printf "3\n1 2 2\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check)
-          if echo "$INVALID_RESPONSE" | grep -q "НЕ является латинским квадратом"; then
-            echo "Invalid Latin square test passed"
+          if printf "3\n1 2 2\n2 3 1\n3 1 2" | curl -s -X POST --data-binary @- http://localhost:8080/check | grep -q "НЕ является латинским квадратом"; then
+            echo "✓ Invalid Latin square test passed"
           else
-            echo "Invalid Latin square test failed"
-            echo "Response: $INVALID_RESPONSE"
+            echo "❌ Invalid Latin square test failed"
             docker logs latin-square-test
+            docker stop latin-square-test
+            docker rm latin-square-test
             exit 1
           fi
+          
+          # Останавливаем и удаляем контейнер
           docker stop latin-square-test
           docker rm latin-square-test
-          echo "All Docker tests passed successfully"
+          echo "✅ All Docker tests passed successfully"
 
       - name: Publish image to Docker Hub (tag builds only)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -215,11 +214,10 @@ jobs:
             - Проверка матрицы на латинский квадрат
             - HTTP сервер для обработки запросов
             - Prometheus метрики для мониторинга
-            - Docker образ доступен на Docker Hub: `docker pull gleb332/dev2:${{ github.ref_name }}`
             
-            ### Установка и использование:
-            
-            **Deb пакет:**
+            ### Docker образ:
             ```bash
-            sudo dpkg -i latin-square_${{ github.ref_name }}_amd64.deb
-            latin-square
+            docker pull gleb332/dev2:${{ github.ref_name }}
+            docker run -d -p 8080:8080 gleb332/dev2:${{ github.ref_name }} python3 /usr/bin/server.py
+            curl http://localhost:8080/health
+            printf "3\n1 2 3\n2 3 1\n3 1 2" | curl -X POST --data-binary @- http://localhost:8080/check
