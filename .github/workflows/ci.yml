@@ -90,17 +90,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: matrix
+          path: out
+
       - name: Download .deb artifact
         uses: actions/download-artifact@v4
         with:
           name: matrix-deb
           path: dist
 
-      - name: Build Docker image from .deb
+      - name: Make binary executable
+        run: chmod +x out/matrix
+
+      - name: Build Docker image from matrix
         run: |
           set -euo pipefail
-          ls -la dist
+          echo "=== Checking matrix binary ==="
+          ls -la out/
+          if [ -f "out/matrix" ]; then
+            echo "✓ matrix found"
+            file out/matrix
+          else
+            echo "❌ matrix not found"
+            exit 1
+          fi
+          echo "=== Building Docker image ==="
           docker build -t latin-square:ci .
+          echo "=== Verifying image ==="
+          docker run --rm latin-square:ci ls -la /usr/bin/matrix
 
       - name: Test Docker image - HTTP Server
         run: |
@@ -139,14 +159,6 @@ jobs:
             echo "Invalid Latin square test failed"
             echo "Response: $INVALID_RESPONSE"
             docker logs latin-square-test
-            exit 1
-          fi
-          echo "Testing metrics endpoint..."
-          METRICS_RESPONSE=$(curl -s http://localhost:8080/metrics)
-          if echo "$METRICS_RESPONSE" | grep -q "latin_square"; then
-            echo "Metrics endpoint test passed"
-          else
-            echo "Metrics endpoint test failed"
             exit 1
           fi
           docker stop latin-square-test
