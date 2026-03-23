@@ -2,10 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: latin-square
-  namespace: default
   labels:
     app: latin-square
-    version: v1
 spec:
   replicas: 2
   selector:
@@ -15,10 +13,9 @@ spec:
     metadata:
       labels:
         app: latin-square
-        version: v1
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
+        prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
     spec:
       containers:
@@ -28,13 +25,21 @@ spec:
         ports:
         - containerPort: 8080
           name: http
-        - containerPort: 9090
-          name: metrics
         env:
-        - name: METRICS_PORT
-          value: "9090"
         - name: HTTP_PORT
           value: "8080"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           requests:
             memory: "64Mi"
@@ -42,17 +47,3 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
-        livenessProbe:
-          exec:
-            command:
-            - /usr/bin/matrix
-            - --health
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command:
-            - /usr/bin/matrix
-            - --ready
-          initialDelaySeconds: 5
-          periodSeconds: 5
