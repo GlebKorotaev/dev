@@ -12,6 +12,6 @@ RUN set -eux; \
     dpkg -i "${deb_file}" || apt-get install -y -f; \
     rm -rf /var/lib/apt/lists/* /tmp/*.deb
 
-EXPOSE 8080
+EXPOSE 8080 9090
 
 ENTRYPOINT ["/usr/bin/latin-square"]

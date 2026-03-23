@@ -1,0 +1,9 @@
+apiVersion: v2
+name: latin-square
+description: Latin Square Checker - проверка латинских квадратов
+type: application
+version: 0.1.0
+appVersion: 1.0.0
+maintainers:
+  - name: Gleb Korotaev
+    email: gleb332@example.com

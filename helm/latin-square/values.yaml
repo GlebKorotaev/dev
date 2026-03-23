@@ -1,0 +1,35 @@
+# Общие настройки
+replicaCount: 2
+
+image:
+  repository: gleb332/dev2
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "100m"
+  limits:
+    memory: "128Mi"
+    cpu: "200m"
+
+# Настройки мониторинга
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+    port: metrics
+
+# Настройки проверки здоровья
+probes:
+  enabled: true
+  livenessCommand: ["/usr/bin/matrix", "--health"]
+  readinessCommand: ["/usr/bin/matrix", "--ready"]
